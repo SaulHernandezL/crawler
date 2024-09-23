@@ -2,9 +2,10 @@
 const app = express(); //* Inicializa express
 const PORT = process.env.PORT || 3000; //* Puerto de escucha
 import puppeteer from "puppeteer"; //* Importa puppeteer
-import express, { response } from "express"; //* Importa express 
+import express, { response } from "express"; //* Importa express
+require("dotenv").config(); //* Importa dotenv
 
-let gallery = []; //* Array de objetos obtenidos de la página 
+let gallery = []; //* Array de objetos obtenidos de la página
 
 //Funcion para formatear el precio
 //Param price: precio a formatear
@@ -16,7 +17,7 @@ function priceFormater(price) {
 	if (price.includes(" - ")) {
 		let index = price.indexOf(" - "); //* Busca el primer guión
 		let precio1 = price.substring(0, index - 2); //* Obtiene el primer entero
-		data.push(precio1);	//* Agrega el primer entero al array
+		data.push(precio1); //* Agrega el primer entero al array
 		let decimal1 = price.substring(index - 2, index); //* Obtiene los primeros dos decimales
 		data.push(decimal1); //* Agrega los primeros dos decimales al array
 		let precio2 = price.substring(index + 3, price.length - 2); //* Obtiene el segundo entero
@@ -65,10 +66,15 @@ function creaObjeto(
 //Funcion del crawler
 const crawler = async (obj) => {
 	console.log("> Bienvenido a Liverpool"); //* Bienvenida
-
 	//* Inicio de Puppeteers
 	//main Browser
-	const browser = await puppeteer.launch({ headless: "new" }); //* headless: "new" para que se abra el navegador
+	const browser = await puppeteer.launch({
+		args: ["--no-sandbox", "--disable-setuid-sandbox", "--no-zygote"],
+		executablePath:
+			process.env.NODE_ENV === "production"
+				? process.env.PUPPETEER_EXECUTABLE_PATH
+				: puppeteer.executablePath(),
+	}); //* headless: "new" para que se abra el navegador
 	console.log("> Browser Opened"); //* Mensaje de apertura del navegador
 
 	const page = await browser.newPage(); //* Abre una nueva pestaña
@@ -101,12 +107,11 @@ const crawler = async (obj) => {
 
 			//main Flag superior
 			let supFlag;
-			try{
+			try {
 				supFlag = await n.$eval("div.a-newFlagPLP", (n) => n.textContent); //* Busca la imagen del producto y obtenemos el link
-			}catch(erro){
+			} catch (erro) {
 				supFlag = null; //* Si no hay flag superior
 			}
-			
 
 			//main Titulo
 			let title = await n.$eval("h3", (n) => n.textContent); //* Busca el titulo del producto
@@ -118,7 +123,7 @@ const crawler = async (obj) => {
 					"p.a-card-price",
 					(n) => n.textContent
 				); //* Busca el elemento con el precio original y obtiene el texto
-				precioOriginal = priceFormater(priceOriginal);	//* Formatea el precio
+				precioOriginal = priceFormater(priceOriginal); //* Formatea el precio
 			} catch (error) {
 				precioOriginal = null; //* Si no hay precio original
 			}
@@ -172,7 +177,7 @@ const crawler = async (obj) => {
 			}
 
 			//main Flags
-			let flags; 
+			let flags;
 			try {
 				flags = await n.$eval("span.a-flag", (n) => n.textContent); //* Busca el elemento div con la clase a-product__flags y obtiene el texto
 			} catch (error) {
@@ -224,16 +229,16 @@ const crawler = async (obj) => {
 //* Configuración de CORS
 app.use((req, res, next) => {
 	res.header("Access-Control-Allow-Origin", "*"); //* Permite el acceso a todos los dominios
-	next();	//* Continua con la ejecución
+	next(); //* Continua con la ejecución
 });
 
 //* Ruta de inicio
 app.get("/:obj", async (req, res) => {
 	const obj = req.params.obj; //* Obtiene el objeto a buscar
-	console.log('Se busacara: ' + obj); //* Muestra el objeto a buscar
+	console.log("Se busacara: " + obj); //* Muestra el objeto a buscar
 	let response = null; //* Respuesta del crawler
 	response = await crawler(obj); //* Ejecuta el crawler
-	
+
 	//response = await mensaje(obj); //* Ejecuta el crawler
 
 	console.log(response[0]); //* Muestra la respuesta
@@ -246,4 +251,4 @@ app.get("/:obj", async (req, res) => {
 //* Inicia el servidor
 app.listen(PORT, () => {
 	console.log(`Web service listening at http://localhost:${PORT}`); //* Mensaje de inicio del servidor
-}); 
+});
